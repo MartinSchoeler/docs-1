@@ -41,21 +41,50 @@ function addAnchors(path) {
   });
 }
 
+$.fn.isInViewport = function() {
+  if (this === undefined){
+    return;
+  }
+  var elementTop = $(this).offset().top;
+  var elementBottom = elementTop + $(this).outerHeight();
+
+  var viewportTop = $(window).scrollTop();
+  var viewportBottom = viewportTop + $(window).height();
+
+  return elementBottom > viewportTop && elementTop < viewportBottom;
+};
+
+function addTocLevels () {
+  $('.toc .active').addClass(function (index) {
+    return " level-"+index;
+  });
+
+  $('.toc li[class*="level"]:not(.active)').removeClass(function () {
+    return " level-0 level-1 level-2 level-3";
+  });
+}
+
 $(document).ready(function() {
 
   scroll_toc(window.location.pathname);
 
+  $('#my_toc li').first().addClass(' active');
+
   var path = (location.hostname == "rocketchat.github.io" || location.hostname == "rocket.chat") ? '/docs-1/' : '/';
 
-  console.log(location);
+  addTocLevels();
 
 
   if(location.pathname !== '/' && location.pathname !== '/docs/'){
+
+
 
     var app = new senna.App();
 
     app.setBasePath(path);
     addAnchors(path);
+    $('table:not(.table-wrapper table)').wrap( "<div class='table-wrapper'></div>" );
+
 
     app.addSurfaces('content');
     app.addRoutes(new senna.Route(/.*/, senna.HtmlScreen));
@@ -66,9 +95,16 @@ $(document).ready(function() {
     });
 
     app.on('endNavigate', function(event) {
-      addAnchors(path);
-      var hash = event.path.indexOf('#');
 
+      addAnchors(path);
+
+      addTocLevels();
+
+      $('#my_toc li').first().addClass(' active');
+
+      $('table:not(.table-wrapper table)').wrap( "<div class='table-wrapper'></div>" );
+
+      var hash = event.path.indexOf('#');
       if (hash !== -1) {
         location.hash = path.substr(hash);
       }
@@ -76,5 +112,28 @@ $(document).ready(function() {
         $('#content').scrollTop(0);
       }
     });
+
+    var currentActive;
+    var lastActive;
+
+    $(window).on('resize scroll', function() {
+      if( lastActive == null || !$(lastActive).isInViewport()){
+        $('.content h2').each(function () {
+          currentActive = 'a[href="#' + $(this)[0].id + '"]'
+          if ($(this).isInViewport()) {
+            lastActive = this;
+            if ($(currentActive)){
+              $('.article-toc-wrapper a').removeClass(' active')
+              $(currentActive).addClass(' active');
+              return false;
+            }
+          }
+        });
+      }
+    });
+
+    $('#my_toc li').on('click', function () {
+      $(this).addClass(' active');
+    })
   }
 });
